@@ -27,6 +27,7 @@
         }
         .nav-link {
             transition: color 0.2s ease-in-out;
+            white-space: nowrap;
         }
         .nav-link.active {
             background: -webkit-linear-gradient(45deg, #f87171, #a855f7);
@@ -109,7 +110,8 @@
             <header class="p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-gray-700 flex-shrink-0">
                 <h1 class="text-2xl font-bold gradient-text mb-4 sm:mb-0">Dashboard</h1>
                 <nav class="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-gray-300">
-                    <button class="nav-link active" data-tab="home">Recent</button>
+                    <button class="nav-link active" data-tab="recommendations">Recommendations</button>
+                    <button class="nav-link" data-tab="home">Recent</button>
                     <button class="nav-link" data-tab="artists">Top Artists</button>
                     <button class="nav-link" data-tab="albums">Top Albums</button>
                     <button class="nav-link" data-tab="tracks">Top Tracks</button>
@@ -138,8 +140,8 @@
 
             let sessionKey = localStorage.getItem('sessionKey');
             let username = localStorage.getItem('username');
-            let pageCounters = { home: 1, artists: 1, albums: 1, tracks: 1 };
-            let currentTab = 'home';
+            let pageCounters = { home: 1, artists: 1, albums: 1, tracks: 1, recommendations: 1 };
+            let currentTab = 'recommendations'; // Default to recommendations
 
             const params = new URLSearchParams(window.location.search);
             const token = params.get('token');
@@ -235,6 +237,9 @@
                         case 'tracks':
                             response = await getTopTracks(page);
                             break;
+                        case 'recommendations':
+                            response = await getRecommendations(page);
+                            break;
                     }
                     
                     content = response.itemsHtml;
@@ -242,10 +247,10 @@
 
                     if (isFreshLoad) {
                         mainContent.innerHTML = response.containerHtml;
-                    } else {
-                        const grid = document.getElementById('grid-container');
-                        if (grid) grid.insertAdjacentHTML('beforeend', content);
                     }
+                    
+                    const grid = document.getElementById('grid-container');
+                    if (grid) grid.insertAdjacentHTML('beforeend', content);
                     
                     updateLoadMoreButton(tab, page, totalPages);
                     addLoveButtonClickHandlers();
@@ -260,9 +265,17 @@
                 const container = document.getElementById('load-more-container');
                 if (!container) return;
 
+                const existingButton = document.getElementById('load-more-btn');
+                if(existingButton) existingButton.remove();
+
                 if (currentPage < totalPages) {
                     container.innerHTML = `<button id="load-more-btn" data-tab="${tab}" class="load-more-btn text-white font-semibold py-2 px-6 rounded-full">Load More</button>`;
-                    document.getElementById('load-more-btn').addEventListener('click', () => loadTabContent(tab));
+                    document.getElementById('load-more-btn').addEventListener('click', () => {
+                        const btn = document.getElementById('load-more-btn');
+                        btn.textContent = 'Loading...';
+                        btn.disabled = true;
+                        loadTabContent(tab);
+                    });
                 } else {
                     container.innerHTML = ''; // No more pages, remove button
                 }
@@ -294,7 +307,6 @@
                 `;
             }
 
-            // Helper to safely get artist name from different API response structures
             function getArtistName(item) {
                 if (!item.artist) return 'Unknown Artist';
                 return item.artist.name || item.artist['#text'] || 'Unknown Artist';
@@ -398,10 +410,53 @@
                 pageCounters.tracks++;
                 return { containerHtml: createCardGridContainer('Top Tracks (Last 7 Days)'), itemsHtml, totalPages };
             }
+
+            async function getRecommendations(page = 1) {
+                const topArtistsData = await apiRequest({ method: 'user.gettopartists', limit: 5, page: page });
+                if (!topArtistsData.topartists || !topArtistsData.topartists.artist.length) {
+                    return { containerHtml: createCardGridContainer('Recommendations For You'), itemsHtml: '', totalPages: 0 };
+                }
+                const totalPages = parseInt(topArtistsData.topartists['@attr'].totalPages);
+
+                const similarTracksPromises = topArtistsData.topartists.artist.map(artist => 
+                    apiRequest({ method: 'artist.gettoptracks', artist: artist.name, limit: 2 })
+                );
+
+                const similarTracksResponses = await Promise.all(similarTracksPromises);
+                
+                let recommendations = [];
+                for (const response of similarTracksResponses) {
+                    if (response.toptracks && response.toptracks.track) {
+                        recommendations.push(...response.toptracks.track);
+                    }
+                }
+
+                // Remove duplicates
+                const uniqueRecommendations = Array.from(new Map(recommendations.map(track => [track.name + track.artist.name, track])).values());
+
+                const itemsHtml = uniqueRecommendations.map(track => {
+                    const artistName = getArtistName(track);
+                    const imageUrl = (track.image && track.image[3] && track.image[3]['#text']) || 'https://placehold.co/300x300/1a202c/e0e0e0?text=?';
+                    return `
+                        <div class="music-card">
+                            <img src="${imageUrl}" alt="${track.name}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/1a202c/e0e0e0?text=?';">
+                            <div class="card-overlay">
+                                <p class="font-bold text-white truncate">${track.name}</p>
+                                <p class="text-sm text-gray-300 truncate">${artistName}</p>
+                            </div>
+                            <button class="love-btn" data-artist="${artistName}" data-track="${track.name}">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+
+                pageCounters.recommendations++;
+                return { containerHtml: createCardGridContainer('Recommendations For You'), itemsHtml, totalPages };
+            }
             
             function addLoveButtonClickHandlers() {
                 document.querySelectorAll('.love-btn').forEach(btn => {
-                    // Prevent adding multiple listeners to the same button
                     if (btn.dataset.listenerAttached) return;
                     btn.dataset.listenerAttached = 'true';
 
