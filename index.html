@@ -27,6 +27,10 @@
         .active-tab {
             color: #3b82f6;
         }
+        .love-btn.loved svg {
+            fill: #ef4444;
+            color: #ef4444;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -37,8 +41,6 @@
         <div id="login-view" class="flex flex-col items-center justify-center h-full p-8 text-center">
             <h1 class="text-3xl font-bold mb-2">Last.fm Dashboard</h1>
             <p class="text-gray-600 mb-8">Log in to view your listening stats.</p>
-            <p class="text-sm text-gray-500 mb-4">You will need to provide your Last.fm API Key to log in.</p>
-            <input type="text" id="api-key-input" placeholder="Enter your Last.fm API Key" class="border rounded-lg px-4 py-2 mb-4 w-full max-w-xs">
             <button id="login-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-full transition duration-300">
                 Log in with Last.fm
             </button>
@@ -81,14 +83,12 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // The API Key and Secret are no longer stored here.
             const callbackUrl = window.location.href.split('?')[0];
             const proxyUrl = '/.netlify/functions/lastfm-proxy';
 
             const loginView = document.getElementById('login-view');
             const dashboardView = document.getElementById('dashboard-view');
             const loginBtn = document.getElementById('login-btn');
-            const apiKeyInput = document.getElementById('api-key-input');
             const logoutBtn = document.getElementById('logout-btn');
             const mainContent = document.getElementById('main-content');
             const tabBtns = document.querySelectorAll('.tab-btn');
@@ -105,14 +105,21 @@
                 getSession(token);
             }
 
-            loginBtn.addEventListener('click', () => {
-                const apiKey = apiKeyInput.value.trim();
-                if (!apiKey) {
-                    alert('Please enter your Last.fm API Key.');
-                    return;
+            loginBtn.addEventListener('click', async () => {
+                try {
+                    // Call our Netlify function to get the auth URL
+                    const response = await fetch(`${proxyUrl}?action=getLoginUrl&callback=${encodeURIComponent(callbackUrl)}`);
+                    const data = await response.json();
+                    if (data.authUrl) {
+                        // Redirect user to Last.fm for authentication
+                        window.location.href = data.authUrl;
+                    } else {
+                        alert('Could not get login URL: ' + (data.error || 'Unknown error'));
+                    }
+                } catch (error) {
+                    console.error('Error getting login URL:', error);
+                    alert('An error occurred while trying to log in.');
                 }
-                // Redirect user to Last.fm for authentication
-                window.location.href = `https://www.last.fm/api/auth/?api_key=${apiKey}&cb=${callbackUrl}`;
             });
 
             logoutBtn.addEventListener('click', () => {
@@ -137,7 +144,6 @@
 
             async function getSession(token) {
                 try {
-                    // Call our Netlify function to get the session key securely
                     const response = await fetch(proxyUrl, {
                         method: 'POST',
                         body: JSON.stringify({ method: 'auth.getSession', token: token })
@@ -186,7 +192,6 @@
                 }
             }
             
-            // Makes a GET request to our proxy function for public data
             async function apiRequest(params) {
                 params.user = username;
                 const queryString = new URLSearchParams(params).toString();
@@ -194,7 +199,6 @@
                 return await response.json();
             }
             
-            // Makes a POST request to our proxy function for authenticated actions
             async function signedApiRequest(params) {
                 params.sk = sessionKey;
                 const response = await fetch(proxyUrl, {
@@ -205,7 +209,7 @@
             }
 
             async function getRecentTracks() {
-                const data = await apiRequest({ method: 'user.getrecenttracks', limit: 20 });
+                const data = await apiRequest({ method: 'user.getrecenttracks', limit: 20, extended: 1 });
                 if (!data.recenttracks || !data.recenttracks.track) return '<div class="text-center p-8">No recent tracks found.</div>';
                 return `
                     <h2 class="text-2xl font-bold mb-4">Recent Tracks</h2>
@@ -281,7 +285,7 @@
                                     <p class="text-gray-500 text-sm">${track.playcount} plays</p>
                                 </div>
                                 <button class="love-btn p-2 rounded-full hover:bg-red-100" data-artist="${track.artist.name}" data-track="${track.name}">
-                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
+                                    <svg class="w-6 h-6 text-gray-400" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
                                 </button>
                             </li>
                         `).join('')}
@@ -294,9 +298,9 @@
                 loveBtns.forEach(btn => {
                     btn.addEventListener('click', async (e) => {
                         e.stopPropagation();
+                        btn.disabled = true; // Disable button immediately to prevent double clicks
                         const artist = btn.dataset.artist;
                         const track = btn.dataset.track;
-                        const heartIcon = btn.querySelector('svg');
                         
                         try {
                             const result = await signedApiRequest({
@@ -305,16 +309,17 @@
                                 track: track
                             });
 
-                            if(result.lfm && result.lfm.status === 'ok') {
-                                heartIcon.classList.remove('text-gray-400');
-                                heartIcon.classList.add('text-red-500', 'fill-current');
-                                btn.disabled = true;
-                            } else {
-                                alert('Failed to love track: ' + (result.message || 'Unknown error'));
+                            if (result.error) {
+                                throw new Error(result.message || 'Failed to love track');
                             }
+                            
+                            // On success, make the heart red
+                            btn.classList.add('loved');
+
                         } catch (error) {
                             console.error('Error loving track:', error);
                             alert('An error occurred while loving the track.');
+                            btn.disabled = false; // Re-enable button on failure
                         }
                     });
                 });
