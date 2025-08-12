@@ -47,8 +47,14 @@
         .nav-link.active { color: var(--accent-color); font-weight: 600; }
         #logout-btn { font-size: 0.9rem; color: var(--accent-color); margin-left: 1rem; }
         .main-content { flex-grow: 1; overflow-y: auto; padding: 1.5rem; min-height: 0; }
-        .main-content h2 { font-size: 1.75rem; font-weight: 700; margin-bottom: 1.5rem; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .page-header h2 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0; }
         
+        /* --- Period Selector --- */
+        .period-selector { display: flex; gap: 0.5rem; background-color: var(--bg-color); padding: 0.25rem; border-radius: 0.5rem; }
+        .period-btn { font-size: 0.8rem; font-weight: 500; color: var(--text-muted-color); padding: 0.25rem 0.75rem; border-radius: 0.375rem; transition: all 0.2s; }
+        .period-btn.active { background-color: white; color: var(--text-color); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
         /* --- Grid & Card View --- */
         .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1.5rem; }
         .music-card { background-color: #f0f2f5; border-radius: 1rem; overflow: hidden; position: relative; transition: transform 0.2s; }
@@ -137,6 +143,11 @@
                 username: localStorage.getItem('username'),
                 currentTab: 'recommendations',
                 pageCounters: { home: 1, artists: 1, albums: 1, tracks: 1, recommendations: 1 },
+                timePeriods: JSON.parse(localStorage.getItem('lastfmTimePeriods')) || {
+                    artists: '1month',
+                    albums: '1month',
+                    tracks: '7day'
+                },
                 settings: JSON.parse(localStorage.getItem('lastfmSettings')) || {
                     viewMode: 'list',
                     showScrobbles: true,
@@ -240,6 +251,7 @@
                     
                     updateLoadMore(tab, page, response.totalPages);
                     addLoveButtonClickHandlers();
+                    addPeriodSelectorListeners(tab);
 
                 } catch (error) {
                     console.error('Error loading tab content:', error);
@@ -287,10 +299,30 @@
                 return await response.json();
             }
 
-            function createContainer(title) {
-                const containerClass = appState.settings.viewMode === 'card' ? 'grid-container' : 'list-container';
+            function renderPeriodSelector(tab) {
+                const periods = [
+                    { value: '7day', label: '7 Days' },
+                    { value: '1month', label: '1 Month' },
+                    { value: '6month', label: '6 Months' },
+                    { value: '12month', label: '1 Year' },
+                    { value: 'overall', label: 'Overall' }
+                ];
+                const currentPeriod = appState.timePeriods[tab];
                 return `
-                    <h2>${title}</h2>
+                    <div class="period-selector">
+                        ${periods.map(p => `<button class="period-btn ${p.value === currentPeriod ? 'active' : ''}" data-period="${p.value}">${p.label}</button>`).join('')}
+                    </div>
+                `;
+            }
+            
+            function createContainer(title, tab) {
+                const containerClass = appState.settings.viewMode === 'card' ? 'grid-container' : 'list-container';
+                const showSelector = ['artists', 'albums', 'tracks'].includes(tab);
+                return `
+                    <div class="page-header">
+                        <h2>${title}</h2>
+                        ${showSelector ? renderPeriodSelector(tab) : ''}
+                    </div>
                     <div id="content-container" class="${containerClass}"></div>
                     <div id="load-more-container" class="load-more-container"></div>
                 `;
@@ -305,7 +337,7 @@
                 const artistName = getArtistName(item);
                 const scrobbles = appState.settings.showScrobbles && item.playcount ? `<span class="list-item-scrobbles">${item.playcount} scrobbles</span>` : '';
                 const { isNowPlaying, isLoved, showAlbum, albumName, imageUrl, loveable } = options;
-                const viewType = type === 'text' ? 'list' : type; // Text view uses list structure without image
+                const viewType = type === 'text' ? 'list' : type;
 
                 if (viewType === 'list') {
                     const img = type === 'text' ? '' : `<img src="${imageUrl || (item.image && item.image[1]['#text']) || 'https://placehold.co/48x48/e0e7ff/3730a3?text=?'}" alt="${item.name}">`;
@@ -326,7 +358,6 @@
                     `;
                 }
 
-                // Card View
                 const finalImageUrl = imageUrl || (item.image && item.image[3] && item.image[3]['#text']) || 'https://placehold.co/300x300/e0e7ff/3730a3?text=?';
                 return `
                     <div class="music-card">
@@ -354,11 +385,12 @@
                     loveable: true
                 })).join('');
                 appState.pageCounters.home++;
-                return { containerHtml: createContainer('Recent Tracks'), itemsHtml, totalPages };
+                return { containerHtml: createContainer('Recent Tracks', 'home'), itemsHtml, totalPages };
             }
 
             async function getTopArtists(page = 1) {
-                const data = await apiRequest({ method: 'user.gettopartists', period: '1month', limit: 10, page });
+                const period = appState.timePeriods.artists;
+                const data = await apiRequest({ method: 'user.gettopartists', period, limit: 10, page });
                 const totalPages = parseInt(data.topartists['@attr'].totalPages);
                 const itemsHtml = data.topartists.artist.map(artist => {
                     if (appState.settings.viewMode === 'card') {
@@ -371,38 +403,36 @@
                     return renderItem(artist, appState.settings.viewMode);
                 }).join('');
                 appState.pageCounters.artists++;
-                return { containerHtml: createContainer('Top Artists (Last Month)'), itemsHtml, totalPages };
+                return { containerHtml: createContainer('Top Artists', 'artists'), itemsHtml, totalPages };
             }
 
             async function getTopAlbums(page = 1) {
-                const data = await apiRequest({ method: 'user.gettopalbums', period: '1month', limit: 10, page });
+                const period = appState.timePeriods.albums;
+                const data = await apiRequest({ method: 'user.gettopalbums', period, limit: 10, page });
                 const totalPages = parseInt(data.topalbums['@attr'].totalPages);
                 const itemsHtml = data.topalbums.album.map(album => renderItem(album, appState.settings.viewMode)).join('');
                 appState.pageCounters.albums++;
-                return { containerHtml: createContainer('Top Albums (Last Month)'), itemsHtml, totalPages };
+                return { containerHtml: createContainer('Top Albums', 'albums'), itemsHtml, totalPages };
             }
 
             async function getTopTracks(page = 1) {
-                const topTracksData = await apiRequest({ method: 'user.gettoptracks', period: '7day', limit: 10, page });
-                if (!topTracksData.toptracks || !topTracksData.toptracks.track) return { containerHtml: createContainer('Top Tracks (Last 7 Days)'), itemsHtml: '', totalPages: 0 };
-                const totalPages = parseInt(topTracksData.toptracks['@attr'].totalPages);
-                const trackInfoPromises = topTracksData.toptracks.track.map(track => apiRequest({ method: 'track.getInfo', artist: track.artist.name, track: track.name }));
-                const trackInfos = await Promise.all(trackInfoPromises);
-                const itemsHtml = trackInfos.map(info => {
-                    if (!info || !info.track) return '';
-                    return renderItem(info.track, appState.settings.viewMode, {
-                        isLoved: info.track.userloved === '1', loveable: true, showAlbum: true,
-                        albumName: (info.track.album && info.track.album.title) || 'Single',
-                        imageUrl: (info.track.album && info.track.album.image[appState.settings.viewMode === 'card' ? 3 : 1]['#text'])
-                    });
-                }).join('');
+                const period = appState.timePeriods.tracks;
+                const data = await apiRequest({ method: 'user.gettoptracks', period, limit: 10, page, extended: 1 });
+                if (!data.toptracks || !data.toptracks.track) return { containerHtml: createContainer('Top Tracks', 'tracks'), itemsHtml: '', totalPages: 0 };
+                const totalPages = parseInt(data.toptracks['@attr'].totalPages);
+                const itemsHtml = data.toptracks.track.map(track => renderItem(track, appState.settings.viewMode, {
+                    isLoved: track.loved === '1',
+                    loveable: true,
+                    showAlbum: true,
+                    albumName: 'Top Track' // Simplified for performance
+                })).join('');
                 appState.pageCounters.tracks++;
-                return { containerHtml: createContainer('Top Tracks (Last 7 Days)'), itemsHtml, totalPages };
+                return { containerHtml: createContainer('Top Tracks', 'tracks'), itemsHtml, totalPages };
             }
 
             async function getRecommendations(page = 1) {
                 const topArtistsData = await apiRequest({ method: 'user.gettopartists', limit: 5, page: page });
-                if (!topArtistsData.topartists || !topArtistsData.topartists.artist.length) return { containerHtml: createContainer('Recommendations For You'), itemsHtml: '', totalPages: 0 };
+                if (!topArtistsData.topartists || !topArtistsData.topartists.artist.length) return { containerHtml: createContainer('Recommendations For You', 'recommendations'), itemsHtml: '', totalPages: 0 };
                 const totalPages = parseInt(topArtistsData.topartists['@attr'].totalPages);
                 const similarTracksPromises = topArtistsData.topartists.artist.map(artist => apiRequest({ method: 'artist.gettoptracks', artist: artist.name, limit: 2 }));
                 const similarTracksResponses = await Promise.all(similarTracksPromises);
@@ -413,7 +443,7 @@
                 const uniqueRecommendations = Array.from(new Map(recommendations.map(track => [track.name + getArtistName(track), track])).values());
                 const itemsHtml = uniqueRecommendations.map(track => renderItem(track, appState.settings.viewMode, { loveable: true })).join('');
                 appState.pageCounters.recommendations++;
-                return { containerHtml: createContainer('Recommendations For You'), itemsHtml, totalPages };
+                return { containerHtml: createContainer('Recommendations For You', 'recommendations'), itemsHtml, totalPages };
             }
             
             function addLoveButtonClickHandlers() {
@@ -436,6 +466,19 @@
                             btn.disabled = false;
                         }
                     });
+                });
+            }
+
+            function addPeriodSelectorListeners(tab) {
+                const selector = document.querySelector('.period-selector');
+                if (!selector) return;
+                selector.addEventListener('click', e => {
+                    if (e.target.classList.contains('period-btn')) {
+                        const period = e.target.dataset.period;
+                        appState.timePeriods[tab] = period;
+                        localStorage.setItem('lastfmTimePeriods', JSON.stringify(appState.timePeriods));
+                        loadTabContent(tab, true);
+                    }
                 });
             }
 
