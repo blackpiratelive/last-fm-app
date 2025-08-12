@@ -7,10 +7,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Ensure full height layout for proper scrolling */
+        html, body {
+            height: 100%;
+            overflow: hidden; /* Prevent scrolling on the body itself */
+        }
         body {
             font-family: 'Inter', sans-serif;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+        }
+        /* Ensure the main app container takes full height */
+        #app {
+            height: 100%;
         }
         .ios-header {
             border-bottom: 1px solid #e5e7eb;
@@ -27,15 +36,16 @@
         .active-tab {
             color: #3b82f6;
         }
+        /* Style for the "loved" heart icon */
         .love-btn.loved svg {
-            fill: #ef4444;
-            color: #ef4444;
+            fill: #ef4444; /* Red fill */
+            color: #ef4444; /* Red stroke */
         }
     </style>
 </head>
 <body class="bg-gray-100">
 
-    <div id="app" class="max-w-md mx-auto bg-white shadow-lg rounded-lg overflow-hidden h-screen flex flex-col">
+    <div id="app" class="max-w-md mx-auto bg-white shadow-lg flex flex-col">
 
         <!-- Login View -->
         <div id="login-view" class="flex flex-col items-center justify-center h-full p-8 text-center">
@@ -54,7 +64,7 @@
                 <button id="logout-btn" class="text-blue-500 font-semibold">Logout</button>
             </header>
 
-            <!-- Main Content -->
+            <!-- Main Content (Scrollable Area) -->
             <main id="main-content" class="flex-grow overflow-y-auto p-4">
                 <!-- Content will be dynamically inserted here -->
             </main>
@@ -107,11 +117,9 @@
 
             loginBtn.addEventListener('click', async () => {
                 try {
-                    // Call our Netlify function to get the auth URL
                     const response = await fetch(`${proxyUrl}?action=getLoginUrl&callback=${encodeURIComponent(callbackUrl)}`);
                     const data = await response.json();
                     if (data.authUrl) {
-                        // Redirect user to Last.fm for authentication
                         window.location.href = data.authUrl;
                     } else {
                         alert('Could not get login URL: ' + (data.error || 'Unknown error'));
@@ -209,21 +217,31 @@
             }
 
             async function getRecentTracks() {
+                // Use extended=1 to get the 'loved' status for each track
                 const data = await apiRequest({ method: 'user.getrecenttracks', limit: 20, extended: 1 });
                 if (!data.recenttracks || !data.recenttracks.track) return '<div class="text-center p-8">No recent tracks found.</div>';
                 return `
                     <h2 class="text-2xl font-bold mb-4">Recent Tracks</h2>
                     <ul class="divide-y divide-gray-200">
-                        ${data.recenttracks.track.map(track => `
-                            <li class="ios-list-item p-4 flex items-center">
-                                <img src="${track.image[2]['#text'] || 'https://placehold.co/64x64/e2e8f0/e2e8f0?text=?'}" class="w-16 h-16 rounded-lg mr-4" onerror="this.onerror=null;this.src='https://placehold.co/64x64/e2e8f0/e2e8f0?text=?';">
-                                <div class="flex-grow">
-                                    <p class="font-semibold">${track.name}</p>
-                                    <p class="text-gray-600">${track.artist['#text']}</p>
-                                </div>
-                                ${track['@attr'] && track['@attr'].nowplaying ? '<span class="text-blue-500 font-semibold">Playing</span>' : ''}
-                            </li>
-                        `).join('')}
+                        ${data.recenttracks.track.map(track => {
+                            const isNowPlaying = track['@attr'] && track['@attr'].nowplaying === 'true';
+                            const isLoved = track.loved === '1';
+                            return `
+                                <li class="ios-list-item p-4 flex items-center">
+                                    <img src="${track.image[2]['#text'] || 'https://placehold.co/64x64/e2e8f0/e2e8f0?text=?'}" class="w-16 h-16 rounded-lg mr-4" onerror="this.onerror=null;this.src='https://placehold.co/64x64/e2e8f0/e2e8f0?text=?';">
+                                    <div class="flex-grow">
+                                        <p class="font-semibold">${track.name}</p>
+                                        <p class="text-gray-600">${track.artist['#text']}</p>
+                                    </div>
+                                    ${isNowPlaying ? 
+                                        '<span class="text-blue-500 font-semibold">Playing</span>' :
+                                        `<button class="love-btn p-2 rounded-full hover:bg-red-100 ${isLoved ? 'loved' : ''}" data-artist="${track.artist['#text']}" data-track="${track.name}" ${isLoved ? 'disabled' : ''}>
+                                            <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
+                                        </button>`
+                                    }
+                                </li>
+                            `;
+                        }).join('')}
                     </ul>
                 `;
             }
@@ -285,7 +303,7 @@
                                     <p class="text-gray-500 text-sm">${track.playcount} plays</p>
                                 </div>
                                 <button class="love-btn p-2 rounded-full hover:bg-red-100" data-artist="${track.artist.name}" data-track="${track.name}">
-                                    <svg class="w-6 h-6 text-gray-400" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
+                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
                                 </button>
                             </li>
                         `).join('')}
@@ -298,7 +316,7 @@
                 loveBtns.forEach(btn => {
                     btn.addEventListener('click', async (e) => {
                         e.stopPropagation();
-                        btn.disabled = true; // Disable button immediately to prevent double clicks
+                        btn.disabled = true;
                         const artist = btn.dataset.artist;
                         const track = btn.dataset.track;
                         
@@ -313,13 +331,12 @@
                                 throw new Error(result.message || 'Failed to love track');
                             }
                             
-                            // On success, make the heart red
                             btn.classList.add('loved');
 
                         } catch (error) {
                             console.error('Error loving track:', error);
                             alert('An error occurred while loving the track.');
-                            btn.disabled = false; // Re-enable button on failure
+                            btn.disabled = false;
                         }
                     });
                 });
