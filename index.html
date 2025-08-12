@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Last.fm Dashboard</title>
+    <meta name="theme-color" content="#f87171"/>
+    <link rel="manifest" href="/manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -12,39 +14,58 @@
         }
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #121826;
-            color: #e0e0e0;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            color: #333;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
         }
         .main-container {
-            background-color: #1a202c;
+            background-color: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         .gradient-text {
-            background: -webkit-linear-gradient(45deg, #f87171, #a855f7);
+            background: -webkit-linear-gradient(45deg, #ef4444, #8b5cf6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
         .nav-link {
-            transition: color 0.2s ease-in-out;
-            white-space: nowrap;
+            transition: all 0.2s ease-in-out;
+            position: relative;
+            color: #4b5563;
+        }
+        .nav-link:after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #ef4444, #8b5cf6);
+            transition: width 0.3s ease;
         }
         .nav-link.active {
-            background: -webkit-linear-gradient(45deg, #f87171, #a855f7);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: #111827;
             font-weight: 600;
         }
+        .nav-link.active:after {
+            width: 100%;
+        }
         .music-card {
-            background-color: #2d3748;
-            border-radius: 12px;
+            background-color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
             overflow: hidden;
-            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
             position: relative;
         }
         .music-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
         }
         .music-card img {
             aspect-ratio: 1 / 1;
@@ -52,81 +73,96 @@
         }
         .card-overlay {
             position: absolute;
-            top: 0;
+            bottom: 0;
             left: 0;
             right: 0;
-            bottom: 0;
-            background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0) 50%);
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-            padding: 1rem;
+            background: linear-gradient(to top, rgba(255,255,255,0.8) 20%, rgba(255,255,255,0) 100%);
+            padding: 1.5rem 1rem 1rem 1rem;
         }
         .love-btn {
             position: absolute;
             top: 12px;
             right: 12px;
-            background-color: rgba(0,0,0,0.5);
+            background-color: rgba(255,255,255,0.5);
             border-radius: 50%;
             width: 36px;
             height: 36px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
+            color: #4b5563;
         }
         .love-btn:hover {
-            background-color: rgba(239, 68, 68, 0.7);
-        }
-        .love-btn.loved svg {
-            fill: #ef4444;
+            background-color: rgba(239, 68, 68, 0.2);
             color: #ef4444;
         }
+        .love-btn.loved {
+            background-color: rgba(239, 68, 68, 0.8);
+            color: white;
+        }
+        .love-btn.loved svg {
+            fill: white;
+        }
         .load-more-btn {
-            background-color: #2d3748;
-            transition: background-color 0.2s;
+            background-color: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.2s;
+            color: #374151;
         }
         .load-more-btn:hover {
-            background-color: #4a5568;
+            background-color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
     </style>
 </head>
 <body>
 
-    <div id="app" class="max-w-4xl mx-auto h-full flex flex-col p-4">
+    <div id="app" class="max-w-6xl mx-auto h-full flex flex-col p-2 sm:p-4">
 
         <!-- Login View -->
         <div id="login-view" class="flex flex-col items-center justify-center h-full text-center">
-            <h1 class="text-5xl font-bold mb-4 gradient-text">Last.fm Dashboard</h1>
-            <p class="text-gray-400 mb-8 text-lg">Your music world, beautifully visualized.</p>
-            <button id="login-btn" class="bg-gradient-to-r from-red-500 to-purple-600 hover:from-red-600 hover:to-purple-700 text-white font-bold py-3 px-8 rounded-full transition-all duration-300 transform hover:scale-105">
+            <h1 class="text-5xl md:text-6xl font-bold mb-4 gradient-text">Last.fm Dashboard</h1>
+            <p class="text-gray-600 mb-8 text-lg">Your music world, beautifully visualized.</p>
+            <button id="login-btn" class="bg-white text-gray-800 font-bold py-3 px-8 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
                 Log in with Last.fm
             </button>
         </div>
 
         <!-- Dashboard View -->
-        <div id="dashboard-view" class="hidden h-full flex-grow flex flex-col main-container rounded-xl shadow-2xl">
+        <div id="dashboard-view" class="hidden h-full flex-grow flex flex-col main-container rounded-2xl shadow-2xl">
             <!-- Header & Navigation -->
-            <header class="p-4 flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-gray-700 flex-shrink-0">
+            <header class="p-4 sm:p-6 flex flex-col sm:flex-row sm:justify-between sm:items-center border-b border-gray-200/80 flex-shrink-0">
                 <h1 class="text-2xl font-bold gradient-text mb-4 sm:mb-0">Dashboard</h1>
-                <nav class="flex flex-wrap justify-center items-center gap-x-4 gap-y-2 text-gray-300">
+                <nav class="flex flex-wrap justify-center items-center gap-x-6 gap-y-2">
                     <button class="nav-link active" data-tab="recommendations">Recommendations</button>
                     <button class="nav-link" data-tab="home">Recent</button>
                     <button class="nav-link" data-tab="artists">Top Artists</button>
                     <button class="nav-link" data-tab="albums">Top Albums</button>
                     <button class="nav-link" data-tab="tracks">Top Tracks</button>
-                    <button id="logout-btn" class="ml-4 text-gray-400 hover:text-white text-sm">Logout</button>
+                    <button id="logout-btn" class="ml-4 text-gray-500 hover:text-gray-800 text-sm">Logout</button>
                 </nav>
             </header>
 
             <!-- Main Content (Scrollable Area) -->
-            <main id="main-content" class="flex-grow overflow-y-auto p-6" style="min-height: 0;">
+            <main id="main-content" class="flex-grow overflow-y-auto p-4 sm:p-6" style="min-height: 0;">
                 <!-- Content will be dynamically inserted here -->
             </main>
         </div>
     </div>
 
     <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then(registration => {
+              console.log('ServiceWorker registration successful with scope: ', registration.scope);
+            }, err => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+          });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const callbackUrl = window.location.href.split('?')[0];
             const proxyUrl = '/.netlify/functions/lastfm-proxy';
@@ -141,7 +177,7 @@
             let sessionKey = localStorage.getItem('sessionKey');
             let username = localStorage.getItem('username');
             let pageCounters = { home: 1, artists: 1, albums: 1, tracks: 1, recommendations: 1 };
-            let currentTab = 'recommendations'; // Default to recommendations
+            let currentTab = 'recommendations';
 
             const params = new URLSearchParams(window.location.search);
             const token = params.get('token');
@@ -178,7 +214,7 @@
                     navLinks.forEach(l => l.classList.remove('active'));
                     link.classList.add('active');
                     currentTab = link.dataset.tab;
-                    loadTabContent(currentTab, true); // `true` to indicate it's a fresh load
+                    loadTabContent(currentTab, true);
                 });
             });
 
@@ -195,7 +231,6 @@
                         body: JSON.stringify({ method: 'auth.getSession', token: token })
                     });
                     const data = await response.json();
-
                     if (data.session) {
                         sessionKey = data.session.key;
                         username = data.session.name;
@@ -215,44 +250,28 @@
             async function loadTabContent(tab, isFreshLoad = false) {
                 if (isFreshLoad) {
                     pageCounters[tab] = 1;
-                    mainContent.innerHTML = `<div class="text-center p-8 text-gray-400">Loading...</div>`;
+                    mainContent.innerHTML = `<div class="text-center p-8 text-gray-500">Loading...</div>`;
                 }
                 
                 const page = pageCounters[tab];
-                let content = '';
-                let totalPages = 0;
-
+                let response;
                 try {
-                    let response;
                     switch (tab) {
-                        case 'home':
-                            response = await getRecentTracks(page);
-                            break;
-                        case 'artists':
-                            response = await getTopArtists(page);
-                            break;
-                        case 'albums':
-                            response = await getTopAlbums(page);
-                            break;
-                        case 'tracks':
-                            response = await getTopTracks(page);
-                            break;
-                        case 'recommendations':
-                            response = await getRecommendations(page);
-                            break;
+                        case 'home': response = await getRecentTracks(page); break;
+                        case 'artists': response = await getTopArtists(page); break;
+                        case 'albums': response = await getTopAlbums(page); break;
+                        case 'tracks': response = await getTopTracks(page); break;
+                        case 'recommendations': response = await getRecommendations(page); break;
                     }
                     
-                    content = response.itemsHtml;
-                    totalPages = response.totalPages;
-
                     if (isFreshLoad) {
                         mainContent.innerHTML = response.containerHtml;
                     }
                     
                     const grid = document.getElementById('grid-container');
-                    if (grid) grid.insertAdjacentHTML('beforeend', content);
+                    if (grid) grid.insertAdjacentHTML('beforeend', response.itemsHtml);
                     
-                    updateLoadMoreButton(tab, page, totalPages);
+                    updateLoadMoreButton(tab, page, response.totalPages);
                     addLoveButtonClickHandlers();
 
                 } catch (error) {
@@ -269,15 +288,15 @@
                 if(existingButton) existingButton.remove();
 
                 if (currentPage < totalPages) {
-                    container.innerHTML = `<button id="load-more-btn" data-tab="${tab}" class="load-more-btn text-white font-semibold py-2 px-6 rounded-full">Load More</button>`;
-                    document.getElementById('load-more-btn').addEventListener('click', () => {
-                        const btn = document.getElementById('load-more-btn');
+                    container.innerHTML = `<button id="load-more-btn" class="load-more-btn font-semibold py-2 px-6 rounded-full">Load More</button>`;
+                    document.getElementById('load-more-btn').addEventListener('click', (e) => {
+                        const btn = e.currentTarget;
                         btn.textContent = 'Loading...';
                         btn.disabled = true;
                         loadTabContent(tab);
                     });
                 } else {
-                    container.innerHTML = ''; // No more pages, remove button
+                    container.innerHTML = '';
                 }
             }
             
@@ -299,21 +318,19 @@
 
             function createCardGridContainer(title) {
                 return `
-                    <h2 class="text-3xl font-bold mb-6 text-white">${title}</h2>
-                    <div id="grid-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-                        <!-- Items will be injected here -->
-                    </div>
+                    <h2 class="text-3xl font-bold mb-6 text-gray-800">${title}</h2>
+                    <div id="grid-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6"></div>
                     <div id="load-more-container" class="text-center mt-8"></div>
                 `;
             }
 
             function getArtistName(item) {
-                if (!item.artist) return 'Unknown Artist';
+                if (!item || !item.artist) return 'Unknown Artist';
                 return item.artist.name || item.artist['#text'] || 'Unknown Artist';
             }
 
             async function getRecentTracks(page = 1) {
-                const data = await apiRequest({ method: 'user.getrecenttracks', limit: 20, extended: 1, page });
+                const data = await apiRequest({ method: 'user.getrecenttracks', limit: 10, extended: 1, page });
                 const totalPages = parseInt(data.recenttracks['@attr'].totalPages);
                 const itemsHtml = data.recenttracks.track.map(track => {
                     const isNowPlaying = track['@attr'] && track['@attr'].nowplaying === 'true';
@@ -321,14 +338,14 @@
                     const artistName = getArtistName(track);
                     return `
                         <div class="music-card">
-                            <img src="${track.image[3]['#text'] || 'https://placehold.co/300x300/1a202c/e0e0e0?text=?'}" alt="${track.name}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/1a202c/e0e0e0?text=?';">
+                            <img src="${track.image[3]['#text'] || 'https://placehold.co/300x300/e2e8f0/e2e8f0?text=?'}" alt="${track.name}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/e2e8f0/e2e8f0?text=?';">
                             <div class="card-overlay">
-                                <p class="font-bold text-white truncate">${track.name}</p>
-                                <p class="text-sm text-gray-300 truncate">${artistName}</p>
+                                <p class="font-bold text-gray-800 truncate">${track.name}</p>
+                                <p class="text-sm text-gray-600 truncate">${artistName}</p>
                             </div>
                             ${isNowPlaying ? '<div class="absolute top-3 left-3 bg-blue-500 text-white text-xs font-bold px-2 py-1 rounded-full">PLAYING</div>' :
                                 `<button class="love-btn ${isLoved ? 'loved' : ''}" data-artist="${artistName}" data-track="${track.name}" ${isLoved ? 'disabled' : ''}>
-                                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
                                 </button>`
                             }
                         </div>
@@ -339,15 +356,15 @@
             }
 
             async function getTopArtists(page = 1) {
-                const data = await apiRequest({ method: 'user.gettopartists', period: '1month', limit: 20, page });
+                const data = await apiRequest({ method: 'user.gettopartists', period: '1month', limit: 10, page });
                 const totalPages = parseInt(data.topartists['@attr'].totalPages);
                 const itemsHtml = data.topartists.artist.map(artist => `
                     <div class="music-card flex flex-col items-center justify-center p-4 text-center aspect-square">
                         <div class="mb-4">
-                             <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                             <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                         </div>
-                        <p class="font-bold text-white truncate w-full">${artist.name}</p>
-                        <p class="text-sm text-gray-300">${artist.playcount} plays</p>
+                        <p class="font-bold text-gray-800 truncate w-full">${artist.name}</p>
+                        <p class="text-sm text-gray-600">${artist.playcount} plays</p>
                     </div>
                 `).join('');
                 pageCounters.artists++;
@@ -355,16 +372,16 @@
             }
 
             async function getTopAlbums(page = 1) {
-                const data = await apiRequest({ method: 'user.gettopalbums', period: '1month', limit: 20, page });
+                const data = await apiRequest({ method: 'user.gettopalbums', period: '1month', limit: 10, page });
                 const totalPages = parseInt(data.topalbums['@attr'].totalPages);
                 const itemsHtml = data.topalbums.album.map(album => {
                     const artistName = getArtistName(album);
                     return `
                         <div class="music-card">
-                            <img src="${album.image[3]['#text'] || 'https://placehold.co/300x300/1a202c/e0e0e0?text=?'}" alt="${album.name}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/1a202c/e0e0e0?text=?';">
+                            <img src="${album.image[3]['#text'] || 'https://placehold.co/300x300/e2e8f0/e2e8f0?text=?'}" alt="${album.name}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/e2e8f0/e2e8f0?text=?';">
                             <div class="card-overlay">
-                                <p class="font-bold text-white truncate">${album.name || 'Untitled Album'}</p>
-                                <p class="text-sm text-gray-300 truncate">${artistName}</p>
+                                <p class="font-bold text-gray-800 truncate">${album.name || 'Untitled Album'}</p>
+                                <p class="text-sm text-gray-600 truncate">${artistName}</p>
                             </div>
                         </div>
                     `;
@@ -379,30 +396,27 @@
                     return { containerHtml: createCardGridContainer('Top Tracks (Last 7 Days)'), itemsHtml: '', totalPages: 0 };
                 }
                 const totalPages = parseInt(topTracksData.toptracks['@attr'].totalPages);
-
                 const trackInfoPromises = topTracksData.toptracks.track.map(track => 
                     apiRequest({ method: 'track.getInfo', artist: track.artist.name, track: track.name })
                 );
                 const trackInfos = await Promise.all(trackInfoPromises);
-
                 const itemsHtml = trackInfos.map(info => {
                     if (!info || !info.track) return '';
                     const track = info.track;
                     const isLoved = track.userloved === '1';
                     const artistName = getArtistName(track);
                     const albumName = (track.album && track.album.title) || 'Single';
-                    const imageUrl = (track.album && track.album.image[3] && track.album.image[3]['#text']) || 'https://placehold.co/300x300/1a202c/e0e0e0?text=?';
-
+                    const imageUrl = (track.album && track.album.image[3] && track.album.image[3]['#text']) || 'https://placehold.co/300x300/e2e8f0/e2e8f0?text=?';
                     return `
                         <div class="music-card">
-                            <img src="${imageUrl}" alt="${albumName}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/1a202c/e0e0e0?text=?';">
+                            <img src="${imageUrl}" alt="${albumName}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/e2e8f0/e2e8f0?text=?';">
                             <div class="card-overlay">
-                                <p class="font-bold text-white truncate">${track.name}</p>
-                                <p class="text-sm text-gray-300 truncate">${artistName}</p>
-                                <p class="text-xs text-gray-400 truncate">${albumName}</p>
+                                <p class="font-bold text-gray-800 truncate">${track.name}</p>
+                                <p class="text-sm text-gray-600 truncate">${artistName}</p>
+                                <p class="text-xs text-gray-500 truncate">${albumName}</p>
                             </div>
                             <button class="love-btn ${isLoved ? 'loved' : ''}" data-artist="${artistName}" data-track="${track.name}" ${isLoved ? 'disabled' : ''}>
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
                             </button>
                         </div>
                     `;
@@ -417,40 +431,33 @@
                     return { containerHtml: createCardGridContainer('Recommendations For You'), itemsHtml: '', totalPages: 0 };
                 }
                 const totalPages = parseInt(topArtistsData.topartists['@attr'].totalPages);
-
                 const similarTracksPromises = topArtistsData.topartists.artist.map(artist => 
                     apiRequest({ method: 'artist.gettoptracks', artist: artist.name, limit: 2 })
                 );
-
                 const similarTracksResponses = await Promise.all(similarTracksPromises);
-                
                 let recommendations = [];
                 for (const response of similarTracksResponses) {
                     if (response.toptracks && response.toptracks.track) {
                         recommendations.push(...response.toptracks.track);
                     }
                 }
-
-                // Remove duplicates
-                const uniqueRecommendations = Array.from(new Map(recommendations.map(track => [track.name + track.artist.name, track])).values());
-
+                const uniqueRecommendations = Array.from(new Map(recommendations.map(track => [track.name + getArtistName(track), track])).values());
                 const itemsHtml = uniqueRecommendations.map(track => {
                     const artistName = getArtistName(track);
-                    const imageUrl = (track.image && track.image[3] && track.image[3]['#text']) || 'https://placehold.co/300x300/1a202c/e0e0e0?text=?';
+                    const imageUrl = (track.image && track.image[3] && track.image[3]['#text']) || 'https://placehold.co/300x300/e2e8f0/e2e8f0?text=?';
                     return `
                         <div class="music-card">
-                            <img src="${imageUrl}" alt="${track.name}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/1a202c/e0e0e0?text=?';">
+                            <img src="${imageUrl}" alt="${track.name}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/e2e8f0/e2e8f0?text=?';">
                             <div class="card-overlay">
-                                <p class="font-bold text-white truncate">${track.name}</p>
-                                <p class="text-sm text-gray-300 truncate">${artistName}</p>
+                                <p class="font-bold text-gray-800 truncate">${track.name}</p>
+                                <p class="text-sm text-gray-600 truncate">${artistName}</p>
                             </div>
                             <button class="love-btn" data-artist="${artistName}" data-track="${track.name}">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
                             </button>
                         </div>
                     `;
                 }).join('');
-
                 pageCounters.recommendations++;
                 return { containerHtml: createCardGridContainer('Recommendations For You'), itemsHtml, totalPages };
             }
@@ -459,13 +466,11 @@
                 document.querySelectorAll('.love-btn').forEach(btn => {
                     if (btn.dataset.listenerAttached) return;
                     btn.dataset.listenerAttached = 'true';
-
                     btn.addEventListener('click', async (e) => {
                         e.stopPropagation();
                         btn.disabled = true;
                         const artist = btn.dataset.artist;
                         const track = btn.dataset.track;
-                        
                         try {
                             const result = await signedApiRequest({ method: 'track.love', artist: artist, track: track });
                             if (result.error) throw new Error(result.message || 'Failed to love track');
