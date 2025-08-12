@@ -4,17 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Last.fm Dashboard</title>
-    <meta name="theme-color" content="#2d3748"/>
+    <meta name="theme-color" content="#ffffff"/>
     <link rel="manifest" href="/manifest.json">
     <style>
         /* --- Base & Typography --- */
         :root {
-            --bg-color: #1a202c;
-            --card-color: #2d3748;
-            --text-color: #e2e8f0;
-            --text-muted-color: #a0aec0;
-            --accent-color: #63b3ed;
-            --love-color: #e53e3e;
+            --bg-color: #f0f2f5;
+            --content-bg-color: #ffffff;
+            --text-color: #1c1e21;
+            --text-muted-color: #606770;
+            --accent-color: #007aff;
+            --love-color: #ff3b30;
+            --border-color: #ced0d4;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body { height: 100%; overflow: hidden; }
@@ -27,71 +28,69 @@
         button { background: none; border: none; color: inherit; font: inherit; cursor: pointer; }
 
         /* --- Layout --- */
-        .container { max-width: 1100px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; padding: 1rem; }
+        .container { max-width: 1100px; margin: 0 auto; height: 100%; display: flex; flex-direction: column; padding: 0; }
         .hidden { display: none !important; }
 
         /* --- Login View --- */
-        .login-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
+        .login-view { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 1rem; }
         .login-view h1 { font-size: 2.5rem; font-weight: 700; margin-bottom: 1rem; color: var(--accent-color); }
         .login-view p { color: var(--text-muted-color); margin-bottom: 2rem; }
-        .login-btn { background-color: var(--accent-color); color: var(--bg-color); font-weight: 600; padding: 0.75rem 2rem; border-radius: 9999px; transition: transform 0.2s; }
-        .login-btn:hover { transform: scale(1.05); }
+        .login-btn { background-color: var(--accent-color); color: white; font-weight: 600; padding: 0.75rem 2rem; border-radius: 0.75rem; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(0,122,255,0.2); }
+        .login-btn:hover { transform: scale(1.05); box-shadow: 0 6px 16px rgba(0,122,255,0.3); }
         
         /* --- Dashboard & Header --- */
-        .dashboard-view { height: 100%; display: flex; flex-direction: column; background-color: var(--card-color); border-radius: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
-        .header { padding: 1.5rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); gap: 1rem; }
+        .dashboard-view { height: 100%; display: flex; flex-direction: column; background-color: var(--content-bg-color); }
+        .header { padding: 1rem 1.5rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); gap: 1rem; background-color: rgba(255,255,255,0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
         .header h1 { font-size: 1.5rem; font-weight: 700; }
         .nav { display: flex; flex-wrap: wrap; justify-content: center; gap: 1rem; }
-        .nav-link { font-size: 0.9rem; color: var(--text-muted-color); transition: color 0.2s; padding: 0.25rem 0.5rem; }
+        .nav-link { font-size: 0.9rem; color: var(--text-muted-color); transition: color 0.2s; padding: 0.25rem 0.5rem; font-weight: 500; }
         .nav-link.active { color: var(--accent-color); font-weight: 600; }
-        #logout-btn { font-size: 0.9rem; color: var(--text-muted-color); margin-left: 1rem; }
+        #logout-btn { font-size: 0.9rem; color: var(--accent-color); margin-left: 1rem; }
         .main-content { flex-grow: 1; overflow-y: auto; padding: 1.5rem; min-height: 0; }
         .main-content h2 { font-size: 1.75rem; font-weight: 700; margin-bottom: 1.5rem; }
         
         /* --- Grid & Card View --- */
         .grid-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1.5rem; }
-        .music-card { background-color: rgba(0,0,0,0.2); border-radius: 0.75rem; overflow: hidden; position: relative; transition: transform 0.2s; }
+        .music-card { background-color: #f0f2f5; border-radius: 1rem; overflow: hidden; position: relative; transition: transform 0.2s; }
         .music-card:hover { transform: translateY(-5px); }
         .music-card img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
-        .card-overlay { position: absolute; bottom: 0; left: 0; right: 0; padding: 1rem; background: linear-gradient(to top, rgba(0,0,0,0.8) 20%, transparent); }
+        .card-overlay { padding: 0.75rem; }
         .card-overlay p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .card-title { font-weight: 600; }
         .card-subtitle { font-size: 0.875rem; color: var(--text-muted-color); }
-        .love-btn { position: absolute; top: 0.75rem; right: 0.75rem; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background-color: rgba(0,0,0,0.5); transition: background-color 0.2s; }
-        .love-btn:hover { background-color: rgba(0,0,0,0.7); }
-        .love-btn svg { width: 20px; height: 20px; }
-        .love-btn.loved { background-color: var(--love-color); }
-        .love-btn.loved svg { fill: white; }
+        .love-btn { position: absolute; top: 0.75rem; right: 0.75rem; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background-color: rgba(255,255,255,0.7); backdrop-filter: blur(5px); }
+        .love-btn svg { width: 18px; height: 18px; color: var(--text-muted-color); }
+        .love-btn.loved svg { color: var(--love-color); fill: var(--love-color); }
         .artist-card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 1rem; aspect-ratio: 1 / 1; }
         .artist-card svg { width: 4rem; height: 4rem; color: var(--text-muted-color); margin-bottom: 1rem; }
 
         /* --- List & Text View --- */
-        .list-container, .text-container { display: flex; flex-direction: column; gap: 0.5rem; }
-        .list-item { display: flex; align-items: center; gap: 1rem; padding: 0.75rem; border-radius: 0.5rem; transition: background-color 0.2s; }
-        .list-item:hover { background-color: rgba(0,0,0,0.2); }
-        .list-item img { width: 40px; height: 40px; border-radius: 0.25rem; flex-shrink: 0; }
+        .list-container, .text-container { display: flex; flex-direction: column; }
+        .list-item { display: flex; align-items: center; gap: 1rem; padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); }
+        .list-item:last-child { border-bottom: none; }
+        .list-item img { width: 48px; height: 48px; border-radius: 0.5rem; flex-shrink: 0; }
         .list-item-info { flex-grow: 1; overflow: hidden; }
         .list-item-info p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .list-item-scrobbles { font-size: 0.875rem; color: var(--text-muted-color); flex-shrink: 0; }
-        .text-item { padding: 0.5rem; border-radius: 0.25rem; transition: background-color 0.2s; }
-        .text-item:hover { background-color: rgba(0,0,0,0.2); }
+        .text-item { padding: 0.75rem 0; border-bottom: 1px solid var(--border-color); }
+        .text-item:last-child { border-bottom: none; }
 
         /* --- Settings Page --- */
         .settings-view { padding: 1.5rem; }
         .settings-section { margin-bottom: 2rem; }
-        .settings-section h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; }
-        .setting-option { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+        .settings-section h3 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; padding-bottom: 0.5rem; }
+        .setting-option { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0.75rem; background-color: var(--bg-color); border-radius: 0.5rem; }
         .toggle-switch { position: relative; display: inline-block; width: 50px; height: 28px; }
         .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4a5568; border-radius: 28px; transition: .4s; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 28px; transition: .4s; }
         .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 4px; bottom: 4px; background-color: white; border-radius: 50%; transition: .4s; }
         input:checked + .slider { background-color: var(--accent-color); }
         input:checked + .slider:before { transform: translateX(22px); }
 
         /* --- Load More --- */
         .load-more-container { text-align: center; margin-top: 2rem; }
-        .load-more-btn { background-color: rgba(255,255,255,0.1); font-weight: 600; padding: 0.5rem 1.5rem; border-radius: 9999px; transition: background-color 0.2s; }
-        .load-more-btn:hover { background-color: rgba(255,255,255,0.2); }
+        .load-more-btn { background-color: #e5e7eb; color: var(--text-color); font-weight: 600; padding: 0.5rem 1.5rem; border-radius: 0.5rem; transition: background-color 0.2s; }
+        .load-more-btn:hover { background-color: #d1d5db; }
         .load-more-btn:disabled { opacity: 0.5; cursor: default; }
 
     </style>
@@ -139,7 +138,7 @@
                 currentTab: 'recommendations',
                 pageCounters: { home: 1, artists: 1, albums: 1, tracks: 1, recommendations: 1 },
                 settings: JSON.parse(localStorage.getItem('lastfmSettings')) || {
-                    viewMode: 'card',
+                    viewMode: 'list',
                     showScrobbles: true,
                     autoLoad: false
                 },
@@ -183,11 +182,11 @@
             function handleNavClick(e) {
                 const tab = e.currentTarget.dataset.tab;
                 selectors.navLinks.forEach(l => l.classList.toggle('active', l.dataset.tab === tab));
+                appState.currentTab = tab;
                 if (tab === 'settings') {
                     renderSettingsPage();
                 } else {
                     selectors.headerTitle.textContent = 'Dashboard';
-                    appState.currentTab = tab;
                     loadTabContent(tab, true);
                 }
             }
@@ -304,35 +303,41 @@
 
             function renderItem(item, type, options = {}) {
                 const artistName = getArtistName(item);
-                const scrobbles = appState.settings.showScrobbles && item.playcount ? `<span class="list-item-scrobbles">${item.playcount} plays</span>` : '';
-                const { isNowPlaying, isLoved, showAlbum, albumName, imageUrl } = options;
+                const scrobbles = appState.settings.showScrobbles && item.playcount ? `<span class="list-item-scrobbles">${item.playcount} scrobbles</span>` : '';
+                const { isNowPlaying, isLoved, showAlbum, albumName, imageUrl, loveable } = options;
+                const viewType = type === 'text' ? 'list' : type; // Text view uses list structure without image
 
-                if (type === 'list' || type === 'text') {
-                    const content = type === 'text' ? '' : `<img src="${imageUrl || (item.image && item.image[1]['#text']) || 'https://placehold.co/40x40/1a202c/e0e0e0?text=?'}" alt="${item.name}">`;
+                if (viewType === 'list') {
+                    const img = type === 'text' ? '' : `<img src="${imageUrl || (item.image && item.image[1]['#text']) || 'https://placehold.co/48x48/e0e7ff/3730a3?text=?'}" alt="${item.name}">`;
                     return `
-                        <div class="${type}-item">
-                            ${content}
+                        <div class="list-item">
+                            ${img}
                             <div class="list-item-info">
                                 <p class="card-title">${item.name}</p>
-                                <p class="card-subtitle">${artistName}${showAlbum ? ` - ${albumName}` : ''}</p>
+                                <p class="card-subtitle">${artistName}${showAlbum ? ` • ${albumName}` : ''}</p>
                             </div>
                             ${scrobbles}
+                            ${isNowPlaying ? `<span style="color: var(--accent-color); font-weight: 600;">Playing</span>` :
+                                (loveable ? `<button class="love-btn" data-artist="${artistName}" data-track="${item.name}" ${isLoved ? 'disabled' : ''}>
+                                    <svg class="${isLoved ? 'loved' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
+                                </button>` : '')
+                            }
                         </div>
                     `;
                 }
 
                 // Card View
-                const finalImageUrl = imageUrl || (item.image && item.image[3] && item.image[3]['#text']) || 'https://placehold.co/300x300/1a202c/e0e0e0?text=?';
+                const finalImageUrl = imageUrl || (item.image && item.image[3] && item.image[3]['#text']) || 'https://placehold.co/300x300/e0e7ff/3730a3?text=?';
                 return `
                     <div class="music-card">
-                        <img src="${finalImageUrl}" alt="${item.name}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/1a202c/e0e0e0?text=?';">
+                        <img src="${finalImageUrl}" alt="${item.name}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/e0e7ff/3730a3?text=?';">
                         <div class="card-overlay">
                             <p class="card-title">${item.name}</p>
                             <p class="card-subtitle">${artistName}</p>
                             ${showAlbum ? `<p class="card-subtitle" style="font-size: 0.75rem;">${albumName}</p>` : ''}
                         </div>
                         ${isNowPlaying ? `<div style="position: absolute; top: 0.75rem; left: 0.75rem; background-color: var(--accent-color); color: white; font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 9999px;">PLAYING</div>` :
-                            (options.loveable ? `<button class="love-btn ${isLoved ? 'loved' : ''}" data-artist="${artistName}" data-track="${item.name}" ${isLoved ? 'disabled' : ''}>
+                            (loveable ? `<button class="love-btn ${isLoved ? 'loved' : ''}" data-artist="${artistName}" data-track="${item.name}" ${isLoved ? 'disabled' : ''}>
                                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
                             </button>` : '')
                         }
@@ -360,7 +365,7 @@
                         return `<div class="music-card artist-card">
                                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                                     <p class="card-title">${artist.name}</p>
-                                    ${appState.settings.showScrobbles ? `<p class="card-subtitle">${artist.playcount} plays</p>` : ''}
+                                    ${appState.settings.showScrobbles ? `<p class="card-subtitle">${artist.playcount} scrobbles</p>` : ''}
                                 </div>`;
                     }
                     return renderItem(artist, appState.settings.viewMode);
@@ -424,6 +429,7 @@
                             const result = await signedApiRequest({ method: 'track.love', artist: artist, track: track });
                             if (result.error) throw new Error(result.message || 'Failed to love track');
                             btn.classList.add('loved');
+                            btn.querySelector('svg').classList.add('loved');
                         } catch (error) {
                             console.error('Error loving track:', error);
                             alert('An error occurred while loving the track.');
@@ -455,7 +461,7 @@
                         <div class="settings-section">
                             <h3>Display Options</h3>
                             <div class="setting-option">
-                                <label for="show-scrobbles">Show Scrobble Counts</label>
+                                <label for="show-scrobbles">Show Your Scrobble Counts</label>
                                 <label class="toggle-switch">
                                     <input type="checkbox" id="show-scrobbles" ${appState.settings.showScrobbles ? 'checked' : ''}>
                                     <span class="slider"></span>
