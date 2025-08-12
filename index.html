@@ -257,7 +257,6 @@
                 const items = data.recenttracks.track.map(track => {
                     const isNowPlaying = track['@attr'] && track['@attr'].nowplaying === 'true';
                     const isLoved = track.loved === '1';
-                    // Safely access artist name, which is in a '#text' property for this endpoint
                     const artistName = (track.artist && track.artist['#text']) || 'Unknown Artist';
                     return `
                         <div class="music-card">
@@ -295,7 +294,6 @@
             async function getTopAlbums() {
                 const data = await apiRequest({ method: 'user.gettopalbums', period: '1month', limit: 20 });
                 const items = data.topalbums.album.map(album => {
-                    // Safely access artist name
                     const artistName = (album.artist && album.artist.name) || 'Unknown Artist';
                     return `
                         <div class="music-card">
@@ -311,17 +309,36 @@
             }
 
             async function getTopTracks() {
-                const data = await apiRequest({ method: 'user.gettoptracks', period: '7day', limit: 20, extended: 1 });
-                const items = data.toptracks.track.map(track => {
-                    const isLoved = track.loved === '1';
-                    // Safely access artist name
+                const topTracksData = await apiRequest({ method: 'user.gettoptracks', period: '7day', limit: 10 });
+                if (!topTracksData.toptracks || !topTracksData.toptracks.track) {
+                    return createCardGrid(null, "Top Tracks (Last 7 Days)");
+                }
+
+                const trackInfoPromises = topTracksData.toptracks.track.map(track => 
+                    apiRequest({
+                        method: 'track.getInfo',
+                        artist: track.artist.name,
+                        track: track.name
+                    })
+                );
+
+                const trackInfos = await Promise.all(trackInfoPromises);
+
+                const items = trackInfos.map(info => {
+                    if (!info || !info.track) return '';
+                    const track = info.track;
+                    const isLoved = track.userloved === '1';
                     const artistName = (track.artist && track.artist.name) || 'Unknown Artist';
+                    const albumName = (track.album && track.album.title) || 'Single';
+                    const imageUrl = (track.album && track.album.image[3] && track.album.image[3]['#text']) || (track.image && track.image[3] && track.image[3]['#text']) ||'https://placehold.co/300x300/1a202c/e0e0e0?text=?';
+
                     return `
                         <div class="music-card">
-                            <img src="${track.image[3]['#text'] || 'https://placehold.co/300x300/1a202c/e0e0e0?text=?'}" alt="${track.name}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/1a202c/e0e0e0?text=?';">
+                            <img src="${imageUrl}" alt="${albumName}" onerror="this.onerror=null;this.src='https://placehold.co/300x300/1a202c/e0e0e0?text=?';">
                             <div class="card-overlay">
                                 <p class="font-bold text-white truncate">${track.name}</p>
                                 <p class="text-sm text-gray-300 truncate">${artistName}</p>
+                                <p class="text-xs text-gray-400 truncate">${albumName}</p>
                             </div>
                             <button class="love-btn ${isLoved ? 'loved' : ''}" data-artist="${artistName}" data-track="${track.name}" ${isLoved ? 'disabled' : ''}>
                                 <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z"></path></svg>
@@ -329,6 +346,7 @@
                         </div>
                     `;
                 }).join('');
+
                 return createCardGrid(items, "Top Tracks (Last 7 Days)");
             }
             
